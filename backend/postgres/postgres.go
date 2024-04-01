@@ -20,6 +20,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"go.opentelemetry.io/otel/trace"
 	"log/slog"
 	"time"

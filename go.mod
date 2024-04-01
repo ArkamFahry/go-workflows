@@ -39,6 +39,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kkHAIKE/contextcheck v1.1.4 // indirect
+	github.com/lib/pq v1.10.9 // indirect
 	github.com/lufeee/execinquery v1.2.1 // indirect
 	github.com/maratori/testableexamples v1.0.0 // indirect
 	github.com/nunnatsa/ginkgolinter v0.13.5 // indirect
