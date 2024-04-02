@@ -1,14 +1,14 @@
 package postgres
 
 import (
-	"database/sql"
 	"github.com/cschleiden/go-workflows/backend"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type options struct {
 	backend.Options
 
-	PostgresOptions func(db *sql.DB)
+	PostgresOptions func(db *pgxpool.Pool)
 
 	// ApplyMigrations automatically applies database migrations on startup.
 	ApplyMigrations bool
@@ -23,7 +23,8 @@ func WithApplyMigrations(applyMigrations bool) option {
 	}
 }
 
-func WithPostgresOptions(f func(db *sql.DB)) option {
+// WithPostgresOptions allows to pass a custom postgres options
+func WithPostgresOptions(f func(db *pgxpool.Pool)) option {
 	return func(o *options) {
 		o.PostgresOptions = f
 	}

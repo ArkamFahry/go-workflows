@@ -2,22 +2,22 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"github.com/cschleiden/go-workflows/backend/history"
 	"github.com/cschleiden/go-workflows/core"
+	"github.com/jackc/pgx/v5"
 	"strings"
 )
 
-func insertPendingEvents(ctx context.Context, tx *sql.Tx, instance *core.WorkflowInstance, newEvents []*history.Event) error {
+func insertPendingEvents(ctx context.Context, tx pgx.Tx, instance *core.WorkflowInstance, newEvents []*history.Event) error {
 	return insertEvents(ctx, tx, "pending_events", instance, newEvents)
 }
 
-func insertHistoryEvents(ctx context.Context, tx *sql.Tx, instance *core.WorkflowInstance, historyEvents []*history.Event) error {
+func insertHistoryEvents(ctx context.Context, tx pgx.Tx, instance *core.WorkflowInstance, historyEvents []*history.Event) error {
 	return insertEvents(ctx, tx, "history", instance, historyEvents)
 }
 
-func insertEvents(ctx context.Context, tx *sql.Tx, tableName string, instance *core.WorkflowInstance, events []*history.Event) error {
+func insertEvents(ctx context.Context, tx pgx.Tx, tableName string, instance *core.WorkflowInstance, events []*history.Event) error {
 	const batchSize = 20
 	for batchStart := 0; batchStart < len(events); batchStart += batchSize {
 		batchEnd := batchStart + batchSize
@@ -50,7 +50,7 @@ func insertEvents(ctx context.Context, tx *sql.Tx, tableName string, instance *c
 				newEvent.ID, newEvent.SequenceID, instance.InstanceID, instance.ExecutionID, newEvent.Type, newEvent.Timestamp, newEvent.ScheduleEventID, newEvent.VisibleAt)
 		}
 
-		if _, err := tx.ExecContext(
+		if _, err := tx.Exec(
 			ctx,
 			aquery,
 			aargs...,
@@ -58,7 +58,7 @@ func insertEvents(ctx context.Context, tx *sql.Tx, tableName string, instance *c
 			return fmt.Errorf("inserting attributes: %w", err)
 		}
 
-		_, err := tx.ExecContext(
+		_, err := tx.Exec(
 			ctx,
 			query,
 			args...,
@@ -71,8 +71,8 @@ func insertEvents(ctx context.Context, tx *sql.Tx, tableName string, instance *c
 	return nil
 }
 
-func removeFutureEvent(ctx context.Context, tx *sql.Tx, instance *core.WorkflowInstance, scheduleEventID int64) error {
-	_, err := tx.ExecContext(
+func removeFutureEvent(ctx context.Context, tx pgx.Tx, instance *core.WorkflowInstance, scheduleEventID int64) error {
+	_, err := tx.Exec(
 		ctx,
 		`DELETE FROM attributes WHERE event_id IN (SELECT event_id FROM pending_events WHERE instance_id = $1 AND execution_id = $2 AND schedule_event_id = $3 AND visible_at IS NOT NULL);
 				DELETE FROM pending_events WHERE instance_id = $1 AND execution_id = $2 AND schedule_event_id = $3 AND visible_at IS NOT NULL;`,

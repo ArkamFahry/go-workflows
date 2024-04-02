@@ -2,10 +2,10 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"github.com/cschleiden/go-workflows/core"
 	"github.com/cschleiden/go-workflows/diag"
+	"github.com/jackc/pgx/v5"
 	"time"
 )
 
@@ -13,15 +13,15 @@ var _ diag.Backend = (*postgresBackend)(nil)
 
 func (b *postgresBackend) GetWorkflowInstances(ctx context.Context, afterInstanceID, afterExecutionID string, count int) ([]*diag.WorkflowInstanceRef, error) {
 	var err error
-	tx, err := b.db.BeginTx(ctx, nil)
+	tx, err := b.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback(ctx)
 
-	var rows *sql.Rows
+	var rows pgx.Rows
 	if afterInstanceID != "" {
-		rows, err = tx.QueryContext(
+		rows, err = tx.Query(
 			ctx,
 			`SELECT i.instance_id, i.execution_id, i.created_at, i.completed_at
 			FROM instances i
@@ -34,7 +34,7 @@ func (b *postgresBackend) GetWorkflowInstances(ctx context.Context, afterInstanc
 			count,
 		)
 	} else {
-		rows, err = tx.QueryContext(
+		rows, err = tx.Query(
 			ctx,
 			`SELECT i.instance_id, i.execution_id, i.created_at, i.completed_at
 			FROM instances i
@@ -77,13 +77,13 @@ func (b *postgresBackend) GetWorkflowInstances(ctx context.Context, afterInstanc
 }
 
 func (b *postgresBackend) GetWorkflowInstance(ctx context.Context, instance *core.WorkflowInstance) (*diag.WorkflowInstanceRef, error) {
-	tx, err := b.db.BeginTx(ctx, nil)
+	tx, err := b.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback(ctx)
 
-	res := tx.QueryRowContext(
+	res := tx.QueryRow(
 		ctx,
 		`SELECT instance_id, execution_id, created_at, completed_at FROM instances WHERE instance_id = $1 AND execution_id = $2`, instance.InstanceID, instance.ExecutionID)
 
@@ -93,10 +93,9 @@ func (b *postgresBackend) GetWorkflowInstance(ctx context.Context, instance *cor
 
 	err = res.Scan(&id, &executionID, &createdAt, &completedAt)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
-
 		return nil, err
 	}
 
